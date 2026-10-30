@@ -1,10 +1,14 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const isLocal =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+export const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (isLocal ? '/api' : 'https://browser-based-expense-tracker.onrender.com/api');
 
 export const WS_URL =
   import.meta.env.VITE_WS_URL ||
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? `ws://${window.location.hostname}:3001`
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
+  (isLocal ? 'ws://localhost:3001' : 'wss://browser-based-expense-tracker.onrender.com');
 
 export const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Health', 'Other'];
 
