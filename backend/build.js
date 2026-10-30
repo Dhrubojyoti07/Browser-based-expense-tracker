@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('--- Expense Tracker Universal Build Runner (Backend Context) ---');
+console.log('--- Expense Tracker Universal Build Runner ---');
 console.log('Current working directory:', process.cwd());
 console.log('Script directory:', __dirname);
 
@@ -55,23 +55,47 @@ if (!fs.existsSync(builtDist)) {
   process.exit(1);
 }
 
-// Copy dist to all possible locations so Vercel always finds it:
+// Copy dist to all possible target locations
 const targetDistLocations = [
-  path.resolve(process.cwd(), 'dist'),
-  path.resolve(__dirname, 'dist'),
-  path.resolve(frontendDir, 'dist'),
-  path.resolve(__dirname, '..', 'dist'),
+  { dir: path.resolve(process.cwd(), 'dist'), appRel: '../src/app.js' },
+  { dir: path.resolve(__dirname, 'dist'), appRel: '../src/app.js' },
+  { dir: path.resolve(frontendDir, 'dist'), appRel: '../../backend/src/app.js' },
+  { dir: path.resolve(__dirname, '..', 'dist'), appRel: '../backend/src/app.js' },
 ];
 
 for (const target of targetDistLocations) {
   try {
-    if (builtDist !== target) {
-      fs.cpSync(builtDist, target, { recursive: true, force: true });
-      console.log(`Copied build output to: ${target}`);
+    if (builtDist !== target.dir) {
+      fs.cpSync(builtDist, target.dir, { recursive: true, force: true });
+      console.log(`Copied build output to: ${target.dir}`);
     }
-  } catch {
+
+    const serverEntryCode = `import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import app from '${target.appRel}';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(__dirname));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+export default app;
+`;
+
+    fs.writeFileSync(path.join(target.dir, 'index.js'), serverEntryCode, 'utf8');
+    fs.writeFileSync(path.join(target.dir, 'app.js'), serverEntryCode, 'utf8');
+    fs.writeFileSync(path.join(target.dir, 'server.js'), serverEntryCode, 'utf8');
+  } catch (err) {
     // ignore
   }
 }
 
-console.log('Universal build completed successfully!');
+console.log('Universal build completed successfully with server entrypoints!');
