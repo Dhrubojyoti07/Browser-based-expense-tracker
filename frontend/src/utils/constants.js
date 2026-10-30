@@ -1,10 +1,10 @@
-﻿export const API_BASE = '/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export const WS_URL =
   import.meta.env.VITE_WS_URL ||
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? `ws://${window.location.hostname}:3001`
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`);
+    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
 
 export const CATEGORIES = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Health', 'Other'];
 
