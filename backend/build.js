@@ -1,0 +1,77 @@
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+console.log('--- Expense Tracker Universal Build Runner (Backend Context) ---');
+console.log('Current working directory:', process.cwd());
+console.log('Script directory:', __dirname);
+
+// Locate frontend directory
+let frontendDir = null;
+const candidatePaths = [
+  path.resolve(process.cwd(), 'frontend'),
+  path.resolve(__dirname, 'frontend'),
+  path.resolve(__dirname, '..', 'frontend'),
+  path.resolve(process.cwd()),
+];
+
+for (const candidate of candidatePaths) {
+  if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, 'package.json'))) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(path.join(candidate, 'package.json'), 'utf8'));
+      if (pkg.dependencies?.react || pkg.devDependencies?.vite) {
+        frontendDir = candidate;
+        break;
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
+
+if (!frontendDir) {
+  console.error('Could not locate frontend directory. Searched:', candidatePaths);
+  process.exit(1);
+}
+
+console.log(`Found frontend directory at: ${frontendDir}`);
+
+// Install frontend dependencies
+console.log('Installing frontend dependencies...');
+execSync('npm install', { cwd: frontendDir, stdio: 'inherit' });
+
+// Build frontend
+console.log('Running frontend production build...');
+execSync('npm run build', { cwd: frontendDir, stdio: 'inherit' });
+
+// Locate the built dist folder
+const builtDist = path.join(frontendDir, 'dist');
+if (!fs.existsSync(builtDist)) {
+  console.error(`Build output not found at ${builtDist}`);
+  process.exit(1);
+}
+
+// Copy dist to all possible locations so Vercel always finds it:
+const targetDistLocations = [
+  path.resolve(process.cwd(), 'dist'),
+  path.resolve(__dirname, 'dist'),
+  path.resolve(frontendDir, 'dist'),
+  path.resolve(__dirname, '..', 'dist'),
+];
+
+for (const target of targetDistLocations) {
+  try {
+    if (builtDist !== target) {
+      fs.cpSync(builtDist, target, { recursive: true, force: true });
+      console.log(`Copied build output to: ${target}`);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+console.log('Universal build completed successfully!');
